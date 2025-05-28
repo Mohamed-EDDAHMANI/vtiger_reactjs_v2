@@ -13,9 +13,7 @@ function App() {
       .then(response => response.json())
       .then(data => {
         setData(data);
-        console.log(data.sections['General Information']);
-        return;
-
+        console.log(data);
       });
   };
 

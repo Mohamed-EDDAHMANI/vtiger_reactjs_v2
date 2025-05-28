@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import PopapHeader from "./PopapHeader"
-import Contact from "./contact"
+import Contact from "./Contact"
+import Potential from "./potential"
 
 export default function Popup({ data, isOpen, setIsOpen, fetchData }) {
   const [searchQuery, setSearchQuery] = useState("")
@@ -10,6 +11,7 @@ export default function Popup({ data, isOpen, setIsOpen, fetchData }) {
   const [hasChanges, setHasChanges] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [updateError, setUpdateError] = useState("")
+  const [activeTab, setActiveTab] = useState("contact") // New navigation state
 
   if (!isOpen) return null
 
@@ -17,9 +19,49 @@ export default function Popup({ data, isOpen, setIsOpen, fetchData }) {
     setSearchQuery(e.target.value)
   }
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab)
+    setSearchQuery("") // Reset search when switching tabs
+  }
+
+  const renderBodyComponent = () => {
+    switch (activeTab) {
+      case "contact":
+        return (
+          <Contact
+            data={data}
+            searchQuery={searchQuery}
+            fetchData={fetchData}
+            showAddField={showAddField}
+            setShowAddField={setShowAddField}
+            setHasChanges={setHasChanges}
+            setIsUpdating={setIsUpdating}
+            setUpdateError={setUpdateError}
+            updateError={updateError}
+          />
+        )
+      case "potential":
+        return (
+          <Potential
+            data={data}
+            searchQuery={searchQuery}
+            fetchData={fetchData}
+            showAddField={showAddField}
+            setShowAddField={setShowAddField}
+            setHasChanges={setHasChanges}
+            setIsUpdating={setIsUpdating}
+            setUpdateError={setUpdateError}
+            updateError={updateError}
+          />
+        )
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-[92%] max-h-[90vh] overflow-hidden shadow-2xl relative">
+      <div className="bg-white rounded-lg w-full max-w-[92%] h-[90vh] overflow-hidden shadow-2xl relative flex flex-col">
         {/* Animated green top border that slides in */}
         <div
           className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-green-600 transition-all duration-500 ease-in-out transform ${
@@ -36,7 +78,6 @@ export default function Popup({ data, isOpen, setIsOpen, fetchData }) {
             </div>
             <button
               onClick={() => {
-                // This will be handled by the Contact component
                 document.dispatchEvent(new CustomEvent("popup-update-requested"))
               }}
               disabled={isUpdating}
@@ -78,26 +119,20 @@ export default function Popup({ data, isOpen, setIsOpen, fetchData }) {
           </div>
         )}
 
-        <div className={`transition-all duration-300 ${hasChanges ? "mt-12" : "mt-0"}`}>
-          <PopapHeader
-            data={data}
-            isOpen={isOpen}
-            setIsOpen={setIsOpen}
-            onSearch={handleSearch}
-            searchQuery={searchQuery}
-          />
+        <div className={`flex flex-col h-full transition-all duration-300 ${hasChanges ? "mt-12" : "mt-0"}`}>
+          <div className="flex-shrink-0">
+            <PopapHeader
+              data={data}
+              isOpen={isOpen}
+              setIsOpen={setIsOpen}
+              onSearch={handleSearch}
+              searchQuery={searchQuery}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+            />
+          </div>
 
-          <Contact
-            data={data}
-            searchQuery={searchQuery}
-            fetchData={fetchData}
-            showAddField={showAddField}
-            setShowAddField={setShowAddField}
-            setHasChanges={setHasChanges}
-            setIsUpdating={setIsUpdating}
-            setUpdateError={setUpdateError}
-            updateError={updateError}
-          />
+          <div className="flex-1 overflow-hidden">{renderBodyComponent()}</div>
         </div>
       </div>
     </div>

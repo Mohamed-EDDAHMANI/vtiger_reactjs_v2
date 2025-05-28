@@ -69,30 +69,29 @@ export default function Contact({
   }
 
   const handleAddField = (newField) => {
-    // Update the data structure with the new field
-    const updatedData = {
-      ...data.data,
-      fields: [...data.data.fields, newField],
-    }
-
-    // Update the form values with the new field's data
+    const updatedFields = [...(data.sections["General Information"] || []), newField]
+    data.sections["General Information"] = updatedFields
+  
+    // Update form values
     setFormValues((prev) => {
       const newValues = {
         ...prev,
         [newField.fieldname]: newField.value || "",
       }
+  
+      // Update filtered fields based on the new formValues
+      const filtered = updatedFields.filter(
+        (field) =>
+          field.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          field.fieldname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (newValues[field.fieldname] || "").toString().toLowerCase().includes(searchQuery.toLowerCase())
+      )
+  
+      setFilteredFields(filtered)
       return newValues
     })
-
-    // Update the filtered fields based on the search query
-    const filtered = updatedData.fields.filter(
-      (field) =>
-        field.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        field.fieldname.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (formValues[field.fieldname] || "").toString().toLowerCase().includes(searchQuery.toLowerCase()),
-    )
-    setFilteredFields(filtered)
   }
+  
 
   // Detect changes in form values
   useEffect(() => {
@@ -284,9 +283,9 @@ export default function Contact({
   }
 
   return (
-    <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)] relative">
+    <div className="h-full overflow-y-auto relative">
       {updateError && (
-        <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-md animate-in slide-in-from-left duration-300">
+        <div className="mx-6 mt-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-md animate-in slide-in-from-left duration-300">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -304,7 +303,7 @@ export default function Contact({
         </div>
       )}
 
-      <div className="mb-8">
+      <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
           <button

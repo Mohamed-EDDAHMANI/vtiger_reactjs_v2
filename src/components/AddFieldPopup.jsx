@@ -10,6 +10,7 @@ const AddFieldPopup = ({ isOpen, onClose, onAddField, fetchData }) => {
     type: "string",
     value: "",
     mandatory: false,
+    editable: true,
   })
 
   const [error, setError] = useState("")
@@ -72,9 +73,11 @@ const AddFieldPopup = ({ isOpen, onClose, onAddField, fetchData }) => {
           type: formData.type,
           value: processedValue,
           mandatory: formData.mandatory,
+          editable: formData.editable,
         },
-        assigned_user_id: "19x1", // Default user ID
+        assigned_user_id: "19x1",
       }
+
 
       const response = await fetch("http://localhost/vtiger_api/createFilde.php", {
         method: "POST",
@@ -215,7 +218,7 @@ const AddFieldPopup = ({ isOpen, onClose, onAddField, fetchData }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Field Name *</label>
+            <label className="flex text-sm font-medium text-gray-700 mb-1">Field Name *</label>
             <input
               type="text"
               name="fieldname"
@@ -227,7 +230,7 @@ const AddFieldPopup = ({ isOpen, onClose, onAddField, fetchData }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Label *</label>
+            <label className="flex text-sm font-medium text-gray-700 mb-1">Label *</label>
             <input
               type="text"
               name="label"
@@ -239,7 +242,7 @@ const AddFieldPopup = ({ isOpen, onClose, onAddField, fetchData }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+            <label className="flex text-sm font-medium text-gray-700 mb-1">Type *</label>
             <select
               name="type"
               value={formData.type}
@@ -256,21 +259,33 @@ const AddFieldPopup = ({ isOpen, onClose, onAddField, fetchData }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="flex text-sm font-medium text-gray-700 mb-1">
               Value {formData.type !== "boolean" && "*"}
             </label>
             {renderValueInput()}
           </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="mandatory"
-              checked={formData.mandatory}
-              onChange={handleInputChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label className="ml-2 block text-sm text-gray-700">Required Field</label>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="mandatory"
+                checked={formData.mandatory}
+                onChange={handleInputChange}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label className="ml-2 block text-sm text-gray-700">Required Field</label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="editable"
+                checked={formData.editable} 
+                onChange={handleInputChange}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label className="ml-2 block text-sm text-gray-700">Editable</label>
+            </div>
           </div>
 
           <div className="flex justify-end space-x-3 mt-6">
