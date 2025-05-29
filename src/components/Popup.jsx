@@ -5,7 +5,7 @@ import PopapHeader from "./PopapHeader"
 import Contact from "./Contact"
 import Potential from "./potential"
 
-export default function Popup({ data, isOpen, setIsOpen, fetchData }) {
+export default function Popup({ id, popupOpen, setPopupOpen }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [showAddField, setShowAddField] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
@@ -13,7 +13,7 @@ export default function Popup({ data, isOpen, setIsOpen, fetchData }) {
   const [updateError, setUpdateError] = useState("")
   const [activeTab, setActiveTab] = useState("contact") // New navigation state
 
-  if (!isOpen) return null
+  if (!popupOpen) return null
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value)

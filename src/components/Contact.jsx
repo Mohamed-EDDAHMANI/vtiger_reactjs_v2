@@ -125,8 +125,10 @@ export default function Contact({
         if (formValues[key] !== initialValues[key]) {
           changedFields[key] = formValues[key]
 
+          console.log(data)//this is the aoutput i will send you to hundle the data struct 
+
           // Find the field definition for this changed field
-          const fieldDef = data.data.fields.find((field) => field.fieldname === key)
+          const fieldDef = data.sections["General Information"].find((field) => field.fieldname === key)
           if (fieldDef) {
             changedFieldsData.push({
               fieldname: fieldDef.fieldname,
@@ -147,7 +149,7 @@ export default function Contact({
       }
 
       const updateData = {
-        id: data.data.id || "12x3", // Use the record ID from data
+        id: data.id || "12x2", // Use the record ID from data
         data: changedFields, // Only send changed fields
         fields: changedFieldsData, // Only send changed field definitions
       }
