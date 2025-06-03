@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import PopapHeader from "./PopapHeader"
 import Contact from "./Contact"
 import Potential from "./potential"
 
-export default function Popup({ id, popupOpen, setPopupOpen }) {
+export default function Popup({ id, contacts, popupOpen, setPopupOpen, setLoading }) {
+  const [data, setData] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [showAddField, setShowAddField] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
@@ -13,7 +14,49 @@ export default function Popup({ id, popupOpen, setPopupOpen }) {
   const [updateError, setUpdateError] = useState("")
   const [activeTab, setActiveTab] = useState("contact") // New navigation state
 
-  if (!popupOpen) return null
+  // console.log(id)
+
+  const fetchData = () => {
+    setLoading(true)
+    fetch("http://localhost/vtigercrm2/api.php?id=" + 2, {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json"
+      }
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        return response.json()
+      })
+      .then((data) => {
+        console.log("API response data:", data)
+        if (data.success && data.data) {
+          const transformedContacts = transformContactData(data.data)
+          setData(transformedContacts)
+        } else {
+          console.error("API returned unsuccessful response:", data)
+          setData([])
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching contacts:", error)
+        setData([])
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => {
+    if (id) {
+      fetchData()
+    }
+  }, [id, contacts])
+
+  if (!popupOpen || !data) return null
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value)
@@ -24,6 +67,14 @@ export default function Popup({ id, popupOpen, setPopupOpen }) {
     setSearchQuery("") // Reset search when switching tabs
   }
 
+
+  const handleInputChange = (field, value) => {
+    setData(prevData => ({
+      ...prevData,
+      [field]: value
+    }))
+  }
+
   const renderBodyComponent = () => {
     switch (activeTab) {
       case "contact":
@@ -31,13 +82,13 @@ export default function Popup({ id, popupOpen, setPopupOpen }) {
           <Contact
             data={data}
             searchQuery={searchQuery}
-            fetchData={fetchData}
             showAddField={showAddField}
             setShowAddField={setShowAddField}
             setHasChanges={setHasChanges}
             setIsUpdating={setIsUpdating}
             setUpdateError={setUpdateError}
             updateError={updateError}
+            handleInputChange={handleInputChange}
           />
         )
       case "potential":
@@ -45,13 +96,13 @@ export default function Popup({ id, popupOpen, setPopupOpen }) {
           <Potential
             data={data}
             searchQuery={searchQuery}
-            fetchData={fetchData}
             showAddField={showAddField}
             setShowAddField={setShowAddField}
             setHasChanges={setHasChanges}
             setIsUpdating={setIsUpdating}
             setUpdateError={setUpdateError}
             updateError={updateError}
+            handleInputChange={handleInputChange}
           />
         )
       default:
@@ -123,8 +174,8 @@ export default function Popup({ id, popupOpen, setPopupOpen }) {
           <div className="flex-shrink-0">
             <PopapHeader
               data={data}
-              isOpen={isOpen}
-              setIsOpen={setIsOpen}
+              popupOpen={popupOpen}
+              setPopupOpen={setPopupOpen}
               onSearch={handleSearch}
               searchQuery={searchQuery}
               activeTab={activeTab}

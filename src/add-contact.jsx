@@ -197,7 +197,7 @@ export default function AddContact({ isOpen, onClose, onSave }) {
 
           {/* Action Buttons */}
           <div className="flex gap-3 mt-8">
-            <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+            <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
               <Save className="w-4 h-4 mr-2" />
               Save Contact
             </Button>

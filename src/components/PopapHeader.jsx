@@ -41,7 +41,7 @@ const NavItem = ({ icon: Icon, label, active, onClick, index }) => {
   )
 }
 
-function PopapHeader({ data, isOpen, setIsOpen, onSearch, searchQuery, activeTab, onTabChange }) {
+function PopapHeader({ data, popupOpen, setPopupOpen, onSearch, searchQuery, activeTab, onTabChange }) {
   const [indicatorWidth, setIndicatorWidth] = useState(0)
   const [indicatorOffset, setIndicatorOffset] = useState(0)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
@@ -150,7 +150,7 @@ function PopapHeader({ data, isOpen, setIsOpen, onSearch, searchQuery, activeTab
         <div className="flex items-center space-x-2 md:space-x-4 w-full md:w-auto">
           <ArrowLeft
             className="w-4 h-4 md:w-5 md:h-5 text-gray-600 cursor-pointer hover:text-gray-800 transition-colors"
-            onClick={() => setIsOpen(false)}
+            onClick={() => setPopupOpen(false)}
           />
           <div className="flex items-center space-x-2 md:space-x-3">
             <div className="w-6 h-6 md:w-10 md:h-10 bg-purple-500 rounded-lg flex items-center justify-center">

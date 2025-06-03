@@ -1,7 +1,7 @@
 "use client"
 
 import { Plus } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import AddFieldPopup from "./AddFieldPopup"
 
 export default function Contact({
@@ -14,92 +14,121 @@ export default function Contact({
   setIsUpdating,
   setUpdateError,
   updateError,
+  handleInputChange, // notify parent on input change
 }) {
   const [formValues, setFormValues] = useState({})
   const [filteredFields, setFilteredFields] = useState([])
   const [initialValues, setInitialValues] = useState({})
+  const isInitialized = useRef(false) // Track if we've initialized the form
 
-  // Initialize form values when data is loaded
+  // Initialize form values when data is loaded - but only once!
   useEffect(() => {
-    console.log(data)
-    if (data && data.sections["General Information"]) {
-      // Set initial form values
-      const initialValues = {}
-      data.sections["General Information"].forEach((field) => {
-        // Get the value from the field data
-        const fieldValue = field.value !== undefined ? field.value : ""
-        initialValues[field.fieldname] = fieldValue
+    if (data && data.rawData && !isInitialized.current) {
+      const initial = {}
+      const fields = data.rawData.map((field) => {
+        initial[field.fieldname] = field.value !== undefined ? field.value : ""
+        return {
+          fieldname: field.fieldname,
+          label: field.label,
+          type: field.type,
+          value: field.value,
+          mandatory: field.mandatory,
+          editable: true,
+        }
       })
 
-      setFormValues(initialValues)
-      setInitialValues(initialValues) // Store initial values for comparison
-      setFilteredFields(data.sections["General Information"])
-      setHasChanges(false) // Reset changes when new data loads
-    } else {
-      console.log("No valid data structure found:", data)
+      setFormValues(initial)
+      setInitialValues(initial)
+      setFilteredFields(fields)
+      setHasChanges(false)
+      isInitialized.current = true // Mark as initialized
     }
   }, [data, setHasChanges])
 
+  // Reset initialization flag when data.id changes (new contact)
+  useEffect(() => {
+    if (data?.id) {
+      isInitialized.current = false
+    }
+  }, [data?.id])
+
   // Filter fields based on search query
   useEffect(() => {
-    if (!data || !data.sections["General Information"]) {
-      console.log("No fields data available for filtering")
-      return
-    }
+    if (!data || !data.rawData) return
 
     const query = searchQuery.toLowerCase()
-    const filtered = data.sections["General Information"].filter(
-      (field) =>
-        field.label.toLowerCase().includes(query) ||
-        field.fieldname.toLowerCase().includes(query) ||
-        (formValues[field.fieldname] || "").toString().toLowerCase().includes(query),
-    )
+
+    const filtered = data.rawData
+      .filter(
+        (field) =>
+          field.label.toLowerCase().includes(query) ||
+          field.fieldname.toLowerCase().includes(query) ||
+          (formValues[field.fieldname] || "").toString().toLowerCase().includes(query),
+      )
+      .map((field) => ({
+        fieldname: field.fieldname,
+        label: field.label,
+        type: field.type,
+        value: formValues[field.fieldname] !== undefined ? formValues[field.fieldname] : field.value,
+        mandatory: field.mandatory,
+        editable: true,
+      }))
+
     setFilteredFields(filtered)
   }, [searchQuery, data, formValues])
 
-  const handleInputChange = (fieldname, value) => {
-    setFormValues((prev) => {
-      const newValues = {
-        ...prev,
-        [fieldname]: value,
-      }
-      console.log("Updated form values:", newValues)
-      return newValues
-    })
-  }
-
   const handleAddField = (newField) => {
-    const updatedFields = [...(data.sections["General Information"] || []), newField]
-    data.sections["General Information"] = updatedFields
-  
-    // Update form values
-    setFormValues((prev) => {
-      const newValues = {
-        ...prev,
-        [newField.fieldname]: newField.value || "",
-      }
-  
-      // Update filtered fields based on the new formValues
-      const filtered = updatedFields.filter(
+    const updatedRawData = [
+      ...data.rawData,
+      {
+        fieldname: newField.fieldname,
+        label: newField.label,
+        type: newField.type,
+        value: newField.value || "",
+        mandatory: newField.mandatory,
+      },
+    ]
+
+    const updatedData = {
+      ...data,
+      rawData: updatedRawData,
+    }
+
+    setFormValues((prev) => ({
+      ...prev,
+      [newField.fieldname]: newField.value || "",
+    }))
+
+    const query = searchQuery.toLowerCase()
+
+    const filtered = updatedRawData
+      .filter(
         (field) =>
-          field.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          field.fieldname.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (newValues[field.fieldname] || "").toString().toLowerCase().includes(searchQuery.toLowerCase())
+          field.label.toLowerCase().includes(query) ||
+          field.fieldname.toLowerCase().includes(query) ||
+          (formValues[field.fieldname] || field.value || "").toString().toLowerCase().includes(query),
       )
-  
-      setFilteredFields(filtered)
-      return newValues
-    })
+      .map((field) => ({
+        fieldname: field.fieldname,
+        label: field.label,
+        type: field.type,
+        value: formValues[field.fieldname] !== undefined ? formValues[field.fieldname] : field.value,
+        mandatory: field.mandatory,
+        editable: true,
+      }))
+
+    setFilteredFields(filtered)
   }
-  
 
   // Detect changes in form values
   useEffect(() => {
+    if (Object.keys(initialValues).length === 0) return // Don't check changes before initialization
+
     const hasFormChanges = Object.keys(formValues).some((key) => formValues[key] !== initialValues[key])
     setHasChanges(hasFormChanges)
   }, [formValues, initialValues, setHasChanges])
 
-  // Handle update request from parent component
+  // Listen for update requests (from outside)
   useEffect(() => {
     const handleUpdateRequest = async () => {
       await handleUpdate()
@@ -117,7 +146,6 @@ export default function Contact({
     setUpdateError("")
 
     try {
-      // Get only the changed fields
       const changedFields = {}
       const changedFieldsData = []
 
@@ -125,10 +153,7 @@ export default function Contact({
         if (formValues[key] !== initialValues[key]) {
           changedFields[key] = formValues[key]
 
-          console.log(data)//this is the aoutput i will send you to hundle the data struct 
-
-          // Find the field definition for this changed field
-          const fieldDef = data.sections["General Information"].find((field) => field.fieldname === key)
+          const fieldDef = data.rawData.find((field) => field.fieldname === key)
           if (fieldDef) {
             changedFieldsData.push({
               fieldname: fieldDef.fieldname,
@@ -141,7 +166,6 @@ export default function Contact({
         }
       })
 
-      // Only proceed if there are actually changes
       if (Object.keys(changedFields).length === 0) {
         console.log("No changes detected")
         setIsUpdating(false)
@@ -149,9 +173,9 @@ export default function Contact({
       }
 
       const updateData = {
-        id: data.id || "12x2", // Use the record ID from data
-        data: changedFields, // Only send changed fields
-        fields: changedFieldsData, // Only send changed field definitions
+        id: data.id || "CON1",
+        data: changedFields,
+        fields: changedFieldsData,
       }
 
       const response = await fetch("http://localhost/vtiger_api/updateRecord.php", {
@@ -172,11 +196,9 @@ export default function Contact({
         throw new Error(result.message || "Server returned an error")
       }
 
-      // Update initial values to current values after successful save
       setInitialValues({ ...formValues })
       setHasChanges(false)
 
-      // Optionally refresh data from server
       if (fetchData) {
         fetchData()
       }
@@ -188,7 +210,6 @@ export default function Contact({
     }
   }
 
-  // Helper function to determine if a boolean value should be checked
   const isBooleanChecked = (value) => {
     if (typeof value === "boolean") return value
     if (typeof value === "string") {
@@ -198,26 +219,32 @@ export default function Contact({
     return false
   }
 
+  // **FIXED** local handler to update local state & notify parent
+  const localHandleInputChange = (fieldname, value) => {
+    setFormValues((prev) => ({ ...prev, [fieldname]: value }))
+    if (handleInputChange) handleInputChange(fieldname, value)
+  }
+
   const renderInput = (field) => {
-    // Get the current value for this field from formValues, not field.value
     const currentValue = formValues[field.fieldname] !== undefined ? formValues[field.fieldname] : field.value
 
     const commonProps = {
       id: field.fieldname,
       name: field.fieldname,
       value: currentValue || "",
-      onChange: (e) => handleInputChange(field.fieldname, e.target.value),
+      onChange: (e) => localHandleInputChange(field.fieldname, e.target.value),
       className: `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
         field.mandatory ? "border-red-500" : "border-gray-300"
       }`,
       required: field.mandatory,
       placeholder: `Enter ${field.label.toLowerCase()}`,
+      disabled: !field.editable,
     }
 
     switch (field.type) {
       case "picklist":
         return (
-          <select {...commonProps} readOnly={!field.editable}>
+          <select {...commonProps}>
             <option value="">Select {field.label}</option>
             {field.options?.map((option) => (
               <option key={option} value={option}>
@@ -228,12 +255,12 @@ export default function Contact({
         )
 
       case "phone":
-        return <input {...commonProps} readOnly={!field.editable} type="tel" pattern="[0-9]*" maxLength="15" />
+        return <input {...commonProps} type="tel" pattern="[0-9]*" maxLength="15" />
 
       case "reference":
         return (
           <div className="relative">
-            <input {...commonProps} readOnly={!field.editable} type="text" />
+            <input {...commonProps} type="text" />
             <button
               type="button"
               className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
@@ -244,13 +271,13 @@ export default function Contact({
         )
 
       case "date":
-        return <input {...commonProps} readOnly={!field.editable} type="date" />
+        return <input {...commonProps} type="date" />
 
       case "datetime":
-        return <input {...commonProps} readOnly={!field.editable} type="datetime-local" />
+        return <input {...commonProps} type="datetime-local" />
 
       case "email":
-        return <input {...commonProps} readOnly={!field.editable} type="email" />
+        return <input {...commonProps} type="email" />
 
       case "boolean":
         const isChecked = isBooleanChecked(currentValue)
@@ -260,7 +287,7 @@ export default function Contact({
               type="checkbox"
               id={field.fieldname}
               checked={isChecked}
-              onChange={(e) => handleInputChange(field.fieldname, e.target.checked ? "true" : "false")}
+              onChange={(e) => localHandleInputChange(field.fieldname, e.target.checked ? "1" : "0")}
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <label htmlFor={field.fieldname} className="ml-2 text-sm text-gray-700">
@@ -270,17 +297,10 @@ export default function Contact({
         )
 
       case "text":
-        return (
-          <textarea
-            {...commonProps}
-            readOnly={!field.editable}
-            rows="3"
-            className={`${commonProps.className} resize-none`}
-          />
-        )
+        return <textarea {...commonProps} rows="3" className={`${commonProps.className} resize-none`} />
 
       default:
-        return <input {...commonProps} readOnly={!field.editable} type="text" />
+        return <input {...commonProps} type="text" />
     }
   }
 
@@ -290,57 +310,44 @@ export default function Contact({
         <div className="mx-6 mt-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-md animate-in slide-in-from-left duration-300">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-11.293a1 1 0 00-1.414 0L7 9.586 5.707 8.293a1 1 0 10-1.414 1.414L6.586 11l-2.293 2.293a1 1 0 001.414 1.414L7 12.414l2.293 2.293a1 1 0 001.414-1.414L8.414 11l2.293-2.293a1 1 0 000-1.414z"
                   clipRule="evenodd"
                 />
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700 font-medium">{updateError}</p>
+              <p className="text-sm font-medium text-red-800">{updateError}</p>
             </div>
           </div>
         </div>
       )}
 
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
-          <button
-            onClick={() => setShowAddField(true)}
-            className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm transition-colors duration-200 ease-in-out"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Field
-          </button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredFields && filteredFields.length > 0 ? (
-            filteredFields.map((field, index) => (
-              <div key={index} className="space-y-1">
-                <label className=" flex text-sm font-medium text-gray-700">
-                  {field.label}
-                  {field.mandatory && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                {renderInput(field)}
-              </div>
-            ))
-          ) : (
-            <div className="col-span-2 text-center py-8">
-              <p className="text-gray-500">No fields found matching "{searchQuery}"</p>
-            </div>
-          )}
+      <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredFields.map((field) => (
+          <div key={field.fieldname} className="flex flex-col">
+            <label htmlFor={field.fieldname} className="text-gray-700 font-semibold mb-1">
+              {field.label} {field.mandatory && <span className="text-red-600">*</span>}
+            </label>
+            {renderInput(field)}
+          </div>
+        ))}
+        <div className="flex items-center justify-center cursor-pointer" onClick={() => setShowAddField(true)}>
+          <Plus className="h-8 w-8 text-gray-500 hover:text-blue-500" />
         </div>
       </div>
 
-      <AddFieldPopup
-        fetchData={fetchData}
-        isOpen={showAddField}
-        onClose={() => setShowAddField(false)}
-        onAddField={handleAddField}
-      />
+      {showAddField && (
+        <AddFieldPopup
+          onClose={() => setShowAddField(false)}
+          onAddField={(newField) => {
+            handleAddField(newField)
+            setShowAddField(false)
+          }}
+        />
+      )}
     </div>
   )
 }
