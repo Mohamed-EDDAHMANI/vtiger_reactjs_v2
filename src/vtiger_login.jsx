@@ -65,34 +65,35 @@ const VtigerLogin = () => {
 
         // Simulate API call
         try {
-            const response = await fetch("http://localhost/vtiger_api/project/login", {
+            const response = await fetch("http://localhost/vtigercrm/API/auth/login.php", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
                     username: formData.username,
-                    password: formData.password,
+                    accessKey: formData.password,
                 }),
             })
-            
-            if (!response.statusText === "OK") {
-                const errorData = await response.json()
-                throw new Error(errorData.message || "Login failed")
-            }
-            
-            if(response.success === false) {
-                throw new Error(response.message || "Login failed")
-            }
-            
+
             const data = await response.json();
-            // document.cookie = `access_token=${data.token}; path=/; max-age=${data.expiresIn}`
-            console.log("Login successful")
-            navigate("/home")
+
+            if (data["Auth User"] && data["Auth User"].sessionName) {
+                // Store sessionName in localStorage
+                localStorage.setItem("sessionName", data["Auth User"].sessionName);
+                console.log("Login successful");
+                navigate("/home");
+            } else if (data.error) {
+                setErrors((prev) => ({ ...prev, password: data.error }));
+                throw new Error(data.error);
+            } else {
+                setErrors((prev) => ({ ...prev, password: "Login failed" }));
+                throw new Error("Login failed");
+            }
         } catch (error) {
-            console.error("Login error:", error)
+            console.error("Login error:", error);
         } finally {
-            setIsLoading(false)
+            setIsLoading(false);
         }
     }
 
